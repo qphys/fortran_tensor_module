@@ -2,67 +2,44 @@ MODULE tensors
     use :: utilities
     implicit none
     public
-  
-!>@brief double precision array-like object containing 2D allocatable array (M) and number of rows and columns (X,Y)
+!>@brief \b type double precision array-like object containing 2D allocatable array (M) and number of rows and columns (X,Y)
     type tensor_2d_8
         real*8, allocatable, dimension(:,:) ::  M                       !< double precision (real*8) allocatable, two dimensional array
         integer                             ::  X                       !< number of rows
         integer                             ::  Y                       !< number of columns
     end type tensor_2d_8
-    
-!>@brief double precision array-like object containing 2D allocatable array (M) and number of rows and columns (X,Y)
+!>@brief \b type double precision array-like object containing 2D allocatable array (M) and number of rows and columns (X,Y)
     type tensor_2d_4
         real*4, allocatable, dimension(:,:) ::  M                       !< single precision (real*4) allocatable, two dimensional array
         integer                             ::  X                       !< number of rows
         integer                             ::  Y                       !< number of columns
     end type tensor_2d_4
- 
-!>@brief object containing four double precision array-like tensor_2d_8 objects: Sz, Sp, Sm and H
-!>@todo change the name to spin_ops_8 and add single precision version
-  type spin_ops
-    type(tensor_2d_8) ::  Sz                                            !< double precision tensor_2d_8 object, preferably containing single site spin \f$S_z\f$ operator
-    type(tensor_2d_8) ::  Sp                                            !< double precision tensor_2d_8 object, preferably containing single site spin \f$S_p\f$ operator
-    type(tensor_2d_8) ::  Sm                                            !< double precision tensor_2d_8 object, preferably containing single site spin \f$S_m\f$ operator
-    type(tensor_2d_8) ::  H                                             !< double precision tensor_2d_8 object, preferably containing single site Hamiltonian \f$H\f$
-  end type spin_ops
-   
-!>@brief overloading = assignment for fast tensor_2d_4 and tensor_2d_8 initialization
-    interface assignment(=)
-        module procedure initTensor2d_8, initTensor2d_4
-    end interface
-    
-!>@brief interface for printing tensor_2d_8 and spin_ops objects; usage call print(object)
+!>@brief \b subroutine interface for printing tensor_2d_8 and tensor_2d_8 objects; usage call print(object)
     interface print
-        module procedure print_array, printSpinOps
+        module procedure print_tensor_2d_8,print_tensor_2d_4
     end interface
-    
-!>@brief interface for deallocation of matrices within tensor_2d_8, tensor_2d_4 and spin_ops objects; usage: call deallocate(object)
+!>@brief \b subroutine interface for deallocation of matrices within tensor_2d_8 and tensor_2d_4 objects; usage: call deallocate(object)
     interface deallocate
-        module procedure deallocate_tensor_2d_4,deallocate_tensor_2d_8, deallocate_spin_ops
+        module procedure deallocate_tensor_2d_4,deallocate_tensor_2d_8
     end interface
-    
-!>@brief checking whether matrix field of tensor_2d_4 or tensor_2d_8 is allocated and if its size corresponds to number of columns and rows. If not - die.
+!>@brief \b checking whether matrix field of tensor_2d_4 or tensor_2d_8 is allocated and if its size corresponds to number of columns and rows. If not - die.
     interface checkTensor
         module procedure checkTensor_tensor_2d_4, checkTensor_tensor_2d_8
     end interface checkTensor
-    
-!>@brief interface for conformity check of tensor_2d_8 and tensor_2d_4 objects; usage call checkConformity(object)
+!>@brief \b subroutine interface for conformity check of tensor_2d_8 and tensor_2d_4 objects; usage call checkConformity(object)
     interface checkConformity
         module procedure checkConformity_tensor_2d_4, checkConformity_tensor_2d_8
     end interface checkConformity
-    
-!>@brief overloading .is. operator for checking whether two identical type objects (tensor_2d_8, tensor_2d_4  or spin_ops) have the same address in memory
+!>@brief \b operator .is. overloading for checking whether two identical type objects (tensor_2d_8 o tensor_2d_4) have the same address in memory
     interface operator( .is. )
-        module procedure isTheSame_tensor_2d_8,isTheSame_tensor_2d_4,isTheSame_spin_ops
+        module procedure isTheSame_tensor_2d_8,isTheSame_tensor_2d_4
     end interface
-    
-!>@brief overloading .expand. operator for identity-tensor and tensor-identity products
+!>@brief \b operator .expand. overloading for identity-tensor and tensor-identity products
     interface operator( .expand. )
         module procedure identityTensorProduct_tensor_2d_4, identityTensorProduct_tensor_2d_8,&
             & tensorIdentityProduct_tensor_2d_4, tensorIdentityProduct_tensor_2d_8
     end interface 
-    
-!>@brief overloading * operator for scalar-tensor operations and for performing tensor products on tensor_2d_4 and tensor_2d_8 object
+!>@brief \b operator * overloading for scalar-tensor operations and for performing tensor products on tensor_2d_4 and tensor_2d_8 object
     interface operator (*)
         module procedure tensorProduct_tensor_2d_4, tensorProduct_tensor_2d_8, &
                         &tensorMultiply_tensor_2d_8_r8, tensorMultiply_tensor_2d_4_r4,&
@@ -74,158 +51,37 @@ MODULE tensors
                         &tensorMultiply_i4_tensor_2d_8, tensorMultiply_i8_tensor_2d_8,&
                         &tensorMultiply_i4_tensor_2d_4, tensorMultiply_i8_tensor_2d_4
     end interface
-
-!>@brief overloading + operator for addition of matrices within tensor_2d_4 or tensor_2d_8 objects
+!>@brief \b operator + overloading for addition of matrices within tensor_2d_4 or tensor_2d_8 objects
     interface operator (+)
         module procedure tensorAdd_tensor_2d_8, tensorAdd_tensor_2d_4
     end interface
-!>@brief overloading - operator for substraction of matrices within tensor_2d_4 or tensor_2d_8 objects
+!>@brief \b operator - overloading for substraction of matrices within tensor_2d_4 or tensor_2d_8 objects
     interface operator (-)
         module procedure tensorSubstract_tensor_2d_8, tensorSubstract_tensor_2d_4
     end interface
     
-  contains
-  
-!>brief przenieść do dmrg.f90
-    subroutine enlargeBlock(cur,enlarged,ss)    
-        implicit none
-        type(spin_ops), intent(in)      ::  cur                             ! current list of operators
-        type(spin_ops), intent(in)      ::  ss                              ! single site operators
-        type(spin_ops), intent(inout)   ::  enlarged                        ! enlarged block operators
-        
-        call tensor_identity_product(cur%H, ss%H%X, enlarged%H)             ! He = H_b (x) 1_(n)
-        call tensor_tensor_product(cur%Sp, ss%Sm, enlarged%H, '+', 0.5D0)   ! He = He + 0.0d0 * S_pb (x) S_m
-        call tensor_tensor_product(cur%Sm, ss%Sp, enlarged%H, '+', 0.5D0)   ! He = He + 0.0d0 * S_mb (x) S_p
-        call tensor_tensor_product(cur%Sz, ss%Sz, enlarged%H, '+', 1.0D0)   ! He = He + 1.0d0 * S_zb (x) S_z
-        call identity_tensor_product(cur%H%X, ss%Sp, enlarged%Sp)           ! 1_(b) (x) Sp = Srpe
-        call identity_tensor_product(cur%H%X, ss%Sm, enlarged%Sm)           ! 1_(b) (x) Sm = Srme
-        call identity_tensor_product(cur%H%X, ss%Sz, enlarged%Sz)           ! 1_(b) (x) Sz = Srze
-        
-!        (cur%H .expand. ss%H%X) + .5*cur%Sp*ss%Sm+.5 * cur%Sm*ss%Sp + cur%Sz*ss%Sz
-        
-        !old H_superblock hamiltonian generation procedure
-            !call tensor_identity_product(He, He%x, Hsup)                    ! Hsup = He (x) 1_(e)
-            !call identity_tensor_product(He%x, He, Hsup, '+', 1.0D0)        ! Hsup = Hsup + 1. * 1_n (x) He
-            !call tensor_tensor_product(Srpe, Srme, Hsup, '+', 0.5D0)        ! Hsup = Hsup + 0.5 * Srpe (x) Srme
-            !call tensor_tensor_product(Srme, Srpe, Hsup, '+', 0.5D0)        ! Hsup = Hsup + 0.5 * Srme (x) Srpe
-            !call tensor_tensor_product(Srze, Srze, Hsup, '+', 1.0D0)        ! Hsup = Hsup + 1.0 * Srze (x) Srze
-    end subroutine enlargeBlock
-
-!> @brief 
-!> @todo przenieść do dmrg.f90
-    subroutine updateAllOperators(truncated, enlarged, O)
-        implicit none
-        type(spin_ops), intent(in)          :: enlarged
-        type(spin_ops), intent(inout)       :: truncated
-        type(tensor_2d_8), intent(in) :: O
-        
-        call updateOperator(truncated%H,  enlarged%H,  O)
-        call updateOperator(truncated%Sp, enlarged%Sp, O)
-        call updateOperator(truncated%Sm, enlarged%Sm, O)
-        call updateOperator(truncated%Sz, enlarged%Sz, O)
-        
-    end subroutine updateAllOperators
-
-!przenieść do dmrg.f90
-
-    subroutine updateOperator(oper_out, oper_in, rot)
-        implicit none
-        type(tensor_2d_8), intent(in)    ::  oper_in, rot
-        type(tensor_2d_8), intent(inout) ::  oper_out
-        if (allocated(oper_out%M)) deallocate(oper_out%M)
-        oper_out%X=rot%y
-        oper_out%Y=rot%y
-        allocate(oper_out%M(oper_out%x,oper_out%y))
-        oper_out%M = matmul(transpose(rot%M), matmul(oper_in%M,rot%M))
-    end subroutine updateOperator
-  
-  
-  
-    subroutine reallocate(realloc, x, y, max_x, max_y)
-        implicit none
-        type(tensor_2d_8), intent(inout)  ::  realloc
-        integer, intent(in)                     ::  x,y
-        integer, optional, intent(in)           ::  max_x, max_y
-        if ( x < 0 .or. y < 0 ) call die('reallocated array needs to have positive dimensions x and y!')
-        if (allocated(realloc%M)) deallocate(realloc%M)
-        realloc%X=x
-        realloc%Y=y
-        if (present(max_x)) then
-            if ( max_x < x ) realloc%X=max_x
-        endif
-        if (present(max_y)) then
-            if ( max_y < y ) realloc%Y=max_y
-        endif
-        allocate(realloc%M(realloc%X,realloc%Y))
-    end subroutine reallocate  
- 
-  
-    subroutine initTensor2d_8(m_in, what)
-        type(tensor_2d_8), intent(out)  ::      m_in
-        character(len=*), intent(in)    ::      what
-
-        if ( allocated(m_in%M) )       deallocate(m_in%M)
-        m_in%X=2
-        m_in%Y=2
-        allocate( m_in%M(m_in%X, m_in%Y) )
-   
-        if (trim(what) == 'Sz') then
-            m_in%M(:,1)=[0.5D0, 0.0D0]
-            m_in%M(:,2)=[0.0D0,-0.5D0]
-        else if (trim(what) == 'Sp') then
-            m_in%M(:,1)=[0.0D0, 1.0D0]
-            m_in%M(:,2)=[0.0D0, 0.0D0]
-        else if (trim(what) == 'Sm') then
-            m_in%M(:,1)=[0.0D0, 0.0D0]
-            m_in%M(:,2)=[1.0D0, 0.0D0]
-        else if (trim(what) == 'Zero') then
-            m_in%M=0D0
-        endif
-    end subroutine initTensor2d_8
-  
-    subroutine initTensor2d_4(m_in, what)
-        type(tensor_2d_4), intent(out)  ::      m_in
-        character(len=*), intent(in)    ::      what
-
-        if ( allocated(m_in%M) )       deallocate(m_in%M)
-        m_in%X=2
-        m_in%Y=2
-        allocate( m_in%M(m_in%X, m_in%Y) )
-   
-        if (trim(what) == 'Sz') then
-            m_in%M(:,1)=[0.5E0, 0.0E0]
-            m_in%M(:,2)=[0.0E0,-0.5E0]
-        else if (trim(what) == 'Sp') then
-            m_in%M(:,1)=[0.0E0, 1.0E0]
-            m_in%M(:,2)=[0.0E0, 0.0E0]
-        else if (trim(what) == 'Sm') then
-            m_in%M(:,1)=[0.0E0, 0.0E0]
-            m_in%M(:,2)=[1.0E0, 0.0E0]
-        else if (trim(what) == 'Zero') then
-            m_in%M=0E0
-        endif
-    end subroutine initTensor2d_4
-  
-    subroutine print_array(m_in)
-        type(tensor_2d_8), intent(in)     ::      m_in
+    contains
+!>@brief printing tensor_2d_8 object (only 2 decimal places), prints m_in \% M (:,a) in rows
+!>@todo add optional format
+    subroutine print_tensor_2d_8(m_in)
+        type(tensor_2d_8), intent(in)           ::      m_in            !< @param - input tensor_2d_8 object for printing
         integer                                 ::      a
         do a=1, m_in%Y
             print "(*(F6.2))",m_in%M(:,a)
         enddo
         print *
-    end subroutine print_array
-    subroutine printSpinOps(ops)
-        type(spin_ops), intent(in)     ::      ops
-        print *,'Sz:'
-        call print_array(ops%Sz)
-        print *,'Sp:'
-        call print_array(ops%Sp)
-        print *,'Sm:'
-        call print_array(ops%Sm)
-        print *,'H:'
-        call print_array(ops%H)
+    end subroutine print_tensor_2d_8
+!>@brief printing tensor_2d_4 object (only 2 decimal places), prints m_in \% M (:,a) in rows
+!>@todo add optional format
+    subroutine print_tensor_2d_4(m_in)
+        type(tensor_2d_4), intent(in)           ::      m_in            !< @param - input tensor_2d_8 object for printing
+        integer                                 ::      a
+        do a=1, m_in%Y
+            print "(*(F6.2))",m_in%M(:,a)
+        enddo
         print *
-    end subroutine printSpinOps
+    end subroutine print_tensor_2d_4
+
         
    
     subroutine identity_tensor_product(n, m_in, m_out, operation, mul)
@@ -375,7 +231,6 @@ MODULE tensors
         type(tensor_2d_8), intent(in)           ::      m_in2           !< @param object for tensor multiplication, has to be allocated with proper row and column number
         type(tensor_2d_8)                       ::      m_out           !< @result Returns the tensor product of two objects.
         integer                                 ::      a, b, c, d
-        print *,'prod'
         call checkTensor(m_in1)
         call checkTensor(m_in2)
         m_out%X=m_in1%X*m_in2%X
@@ -394,7 +249,6 @@ MODULE tensors
         enddo
         
     end function tensorProduct_tensor_2d_8
-
 !>@brief Calculating the tensor product of two tensor_2d_4 objects 
     function tensorProduct_tensor_2d_4(m_in1, m_in2) result (m_out)
         implicit none
@@ -563,7 +417,6 @@ MODULE tensors
         allocate( m_out%M(m_out%X, m_out%Y) )
         m_out%M = mul * m_in%M
     end function tensorMultiply_tensor_2d_8_r8
-        
 !>@brief multiplying matrix in a tensor object (tensor_2d_4\%M) by mul (real *4). Computations are performed here.
     function tensorMultiply_tensor_2d_4_r4(m_in, mul) result(m_out)
         implicit none
@@ -576,7 +429,6 @@ MODULE tensors
         allocate( m_out%M(m_out%X, m_out%Y) )
         m_out%M = mul * m_in%M
     end function tensorMultiply_tensor_2d_4_r4
-
 !>@brief multiplying matrix in a tensor object (tensor_2d_8\%M) by mul (real *4). Computations are performed here.
     function tensorMultiply_tensor_2d_8_r4(m_in, mul) result(m_out)
         implicit none
@@ -589,7 +441,6 @@ MODULE tensors
         allocate( m_out%M(m_out%X, m_out%Y) )
         m_out%M = mul * m_in%M
     end function tensorMultiply_tensor_2d_8_r4
-
 !>@brief multiplying matrix in a tensor object (tensor_2d_4\%M) by mul (real *8). Computations are performed here.
     function tensorMultiply_tensor_2d_4_r8(m_in, mul) result(m_out)
         implicit none
@@ -717,15 +568,6 @@ MODULE tensors
         same=.false.
         if (loc(tensor1) == loc(tensor2)) same=.true.
     end function isTheSame_tensor_2d_8
-!>@brief Check whether addresses of two objects are the same.
-    function isTheSame_spin_ops(ops1,ops2) result(same)
-        implicit none
-        type(spin_ops), intent(in)      ::  ops1                        !< @param - object for checking
-        type(spin_ops), intent(in)      ::  ops2                        !< @param - object for checking
-        logical                         ::  same                        !< @return If objects have the same address in memory: .true., otherwise: .false.
-        same=.false.
-        if (loc(ops1) == loc(ops2)) same=.true.
-    end function isTheSame_spin_ops
 !>@brief Deallocate allocatable parts of a tensor_2d_4 variable.  Can be run on objects with unallocated internal fields.
     subroutine deallocate_tensor_2d_4(tensor1)
         implicit none
@@ -738,15 +580,6 @@ MODULE tensors
         type(tensor_2d_8), intent(inout)   ::  tensor1                  !< @param - object with allocatable/deallocatable fields
         if (allocated(tensor1%M)) deallocate(tensor1%M)
     end subroutine deallocate_tensor_2d_8 
-!>@brief Deallocate allocatable parts of spin_ops fields: Sp, Sm, Sz and H. Can be run on objects with unallocated internal fields.
-    subroutine deallocate_spin_ops(ops)
-        implicit none
-        type(spin_ops), intent(inout)   ::  ops                         !< @param[ - object of type spin_ops, containing Sp, Sm, Sz and H fields of type tensor_2d_8
-        call deallocate_tensor_2d_8(ops%Sp)
-        call deallocate_tensor_2d_8(ops%Sm)
-        call deallocate_tensor_2d_8(ops%Sz)
-        call deallocate_tensor_2d_8(ops%H)
-    end subroutine deallocate_spin_ops 
 !>@brief Check whether two array like objects have the same dimensions (columns, rows and sizes). 
 !>@todo consider switching to a function and offloading the communication with user to the caller
     subroutine checkConformity_tensor_2d_8(t1,t2)
